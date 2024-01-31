@@ -1,7 +1,26 @@
 import 'package:flutter/material.dart';
 
+// 사용자로부터 접근권한 ( 이미지 경로, 연락처 등 .. ) 허가 받는법.
+import 'package:permission_handler/permission_handler.dart';
+// pubspec.yaml 의 dependencies: 하위에 permission_handler: ^8.3.0
+
+// 안드로이드는 android.app.build.gradle 파일 하단에 android {} 부분에 compileSdkVersion 숫자 혹은 문자 채워져있는지 확인 없으면 31 작성.
+// android.app.src.main.AndroidManifest.xml 내부에
+/*
+<uses-permission android:name="android.permission.READ_CONTACTS" />
+<uses-permission android:name="android.permission.WRITE_CONTACTS" />
+와 같이 권한 허가 받을수 있음.
+ */
+
+
+
+
 void main() {
-  runApp(MyApp()); // runApp : 앱 구동 명령어, MyApp 메인 페이지
+  runApp(
+    MaterialApp(
+      home : MyApp()
+    )
+  ); // runApp : 앱 구동 명령어, MyApp 메인 페이지
 }
 
 // Custom Widget **매우 중요**. (만약 굉장히 긴 레이아웃 용 위젯 들이 너무 많아 진다면..? 한 단어로 깔끔 하게 축약 가능.) @stless 사용
@@ -31,56 +50,129 @@ class ShopItem extends StatelessWidget {  // 클래스명 작성
   }
 }
 
+// State 변수 선언 (stful 자동완성) // 이후 MyApp 부분 클래스의 extends 부분에 전구를 활성화하여 StatefulWidget으로 변경하기. 이후 내부에있는 변수는 자동으로 state상태가됨.
+class StateVal extends StatefulWidget {
+  const StateVal({super.key});
 
-class MyApp extends StatelessWidget {
-  /*const*/ MyApp({super.key});
+  @override
+  State<StateVal> createState() => _StateValState();
+}
 
-  var a = 1;
+class _StateValState extends State<StateVal> {
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder();
+  }
+}
+
+class DialogUI extends StatelessWidget {
+  // !! 매우매우 중요 !! 만약 자식에서 부모에있는 MyApp의 a 변수를 가져다 쓰고 싶으면 ?? (부모 위젯의 state를 자식 위젯이 사용하고 싶다면?)
+  // 원래 다른 class에 있는 변수는 지역변수이기 때문에 마음대로 가져다 사용은 불가능하다..
+  // * 매우 중요 * 자식위젯에게 state를 전송할 수 있음.
+  /*
+  1. 부모 : 보내고
+  2. 부모, 자식 : 등록
+  3. 자식 : 사용
+
+  부모 -> 자식 state 전송은 가능, but .. 자식에서 부모, 다른 자식에게도 state 전송은 불가능하다.
+  따라서 중요한 state 최대한 부모 위젯에 생성해야 함.
+
+  그렇다면 부모 state 값을 어떤식으로 수정해야하는가? 부모 위젯에서 변수를 수정하는 함수를 생성하고 호출해야한다!!!
+   */
+  DialogUI( {super.key, this.addOne, this.addName} );     // 자식에서 등록
+  // var state;  // 부모 및 자식에서 등록한걸 선언  // const를 유지하거나 final로 변수 선언하면.. (read-only로 선언됨)
+  final addOne;
+  final addName;
+  var inputData = TextEditingController();
+  var inputData2 = "";
 
   @override
   Widget build(BuildContext context) {
+    return Dialog(
+      child: SizedBox(
+        width: 300,
+        height: 300,
+        child: Column(
+          children: [
+            // TextField( controller: inputData,),  // 사용자가 입력한 데이터를 변수에 담는법. controller: 변수 // 입력하면 해당 변수에 저장이 됨. // 혹은 onChanged: (){}
+            // TextButton ( child: Text('완료'), onPressed:() {addName(inputData.text);} )
+            TextField( onChanged: (text){ inputData2 = text;  print(inputData2);} ), // 소괄호의 text: 사용자가 입력한 값.
+            TextButton(child: Text('완료'), onPressed:(){ addName(inputData2); addOne(); } ),
+            TextButton(onPressed: (){Navigator.pop(context); }, child: Text('취소')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+class MyApp extends StatefulWidget {
+  /*const*/ MyApp({super.key});
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+
+  // 접근 권한 사용자에게 허가 받는 방법. 고정됨
+  getPermission() async {
+    var status = await Permission.contacts.status;
+    if (status.isGranted){
+      print("허락됨");
+    } else if (status.isDenied) {
+      print("거절됨");
+    }
+  }
+
+
+  var name = ['김영숙', '홍길동', '피자집'];
+  var total = 3;
+  
+  addName(value){
+    setState(() {
+      name.add(value);
+    });
+  }
+
+
+  addOne(){
+    setState(() {
+      total++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // !! 매우 중요.  context: 커스텀 위젯을 만들 때마다 강제로 하나씩 생성됨. "the build location of the current widget"( 부모 위젯의 정보를 담고 있는 변수 )
     // 메인 페이지 디자인 등 .. 실질 적인 코드 작성 위치
-    return MaterialApp(
-        home: Scaffold(
-            /*
-                 ** 버튼에 기능 부여하는 법
-                 floatingActionButton 항상 child, onPressed가 필요함.
-                 onPressed: 항상 (){}이 세트.
-             */
-            floatingActionButton: FloatingActionButton(
-              child: Text(a.toString()),  // a++ 이 되더 라도 버튼 명은 안바뀜. (재 랜더링이 안되어서 그렇다.)  재 랜더링:
-              onPressed: (){
-                print(a);
-                a++;
-              },
-            ),
-            appBar: AppBar(),
-            body:
-            /*
-            ListView(
-              children: [
-                ListTile(
-                  leading: Image.asset('Capture001.png'),
-                  title: Text('홍길동'),
-                )
-              ],
-            )
-             // 만약 이같은 코드를 100번 반복할 것인가? 반복문 존재. (ListView.Builder)
-             */
-          ListView.builder( // * 매우 중요 *
-              itemCount: 5, // 몇번 반복 생성할 것인지 ?
-              itemBuilder: (context, iterator){  // 반드시 파라미터 안에 파라미터 두개를 넣어야함. (iterator 위젯 반복 생성마다 +1)
-                // return Text(iterator.toString());  // text내에는 문자만가능
-                // print(iterator); // sout 과 같이 print 가능하다. 디버깅 잘 활용할 수 있음.
+    // print(context.findAncestorWidgetOfExactType<MaterialApp>()); // 확인방법
+    // showDialog(context), Scaffold.of(context), Navigator.pop(context), Theme.of(context) 는 context를 입력해야 잘 동작하는 함수.
+    // 이는 부모 중에 MaterialApp이 포함되어야 context를 입력해야 잘 동작한다.!! -> 따라서 main함수쪽으로 MaterialApp을 바깥으로 뺀 것.
+    // 혹은 Builder로 Wrap하면 context 족보 생성..! -> Scaffold, MaterialApp 이런거 들어있다..! builder: (jokbo1) 이후 context: jokbo1 와 같이 사용.
+    return Scaffold(
+          appBar: AppBar( title: Text(total.toString())),
+          body: ListView.builder(
+            itemCount: name.length,
+            itemBuilder: (c,i){
                 return ListTile(
                   leading: Image.asset('Capture001.png'),
-                  title: Text('홍길동'),
-                );
-              },
-          )
+                  title: Text(name[i]),
+            );
+          }),
+          floatingActionButton: FloatingActionButton(
+            onPressed: (){
+              showDialog(context: context, builder: (context){  // dialog는 해당 양식이 고정.
+                return DialogUI(addOne : addOne, addName : addName );  // 자식위젯에게 보내는 방법. ( 작명 : 보낼state ) // 부모에서 등록
+              });
+            },
+          ),
+        );
 
-        ),
-    );
 
         // 꼭 알아야하는 위젯 4가지
         /*
@@ -232,6 +324,57 @@ class MyApp extends StatelessWidget {
               ),
             )
 
+     */
+    
+    /*
+    Scaffold(
+            /*
+                 ** 버튼에 기능 부여하는 법
+                 floatingActionButton 항상 child, onPressed가 필요함.
+                 onPressed: 항상 (){}이 세트.
+             */
+
+            /*
+            state 변수는 값이 변할 때마다 사용하는 위젯이 자동으로 재 랜더링 됨.
+
+             */
+
+            floatingActionButton: FloatingActionButton(
+              child: Text(a.toString()),  // a++ 이 되더 라도 버튼 명은 안바뀜. (재 랜더링이 안되어서 그렇다.)  재 랜더링: 리액트의 useState와같이 state사용.
+              onPressed: (){
+                print(a);
+                setState(() {   // 매우 중요하다 !! State는 setter를  사용하여 변경 사항을 적용해야 한다. (변수 선언자체는 일반변수와 동일.)
+                  a++;
+                });
+              },
+            ),
+            appBar: AppBar(),
+            body:
+            /*
+            ListView(
+              children: [
+                ListTile(
+                  leading: Image.asset('Capture001.png'),
+                  title: Text('홍길동'),
+                )
+              ],
+            )
+             // 만약 이같은 코드를 100번 반복할 것인가? 반복문 존재. (ListView.Builder)
+             */
+          ListView.builder( // * 매우 중요 *
+              itemCount: name.length, // 몇번 반복 생성할 것인지 ?
+              itemBuilder: (context, iterator){  // 반드시 파라미터 안에 파라미터 두개를 넣어야함. (iterator 위젯 반복 생성마다 +1)
+                // return Text(iterator.toString());  // text내에는 문자만가능
+                // print(iterator); // sout 과 같이 print 가능하다. 디버깅 잘 활용할 수 있음.
+                return ListTile(
+                  leading: Image.asset('Capture001.png'),
+                  title: Text(name[iterator]),
+                );
+              },
+          )
+
+        )
+    
      */
 
   }
