@@ -121,12 +121,26 @@ class _MyAppState extends State<MyApp> {
 
   // 접근 권한 사용자에게 허가 받는 방법. 고정됨
   getPermission() async {
-    var status = await Permission.contacts.status;
-    if (status.isGranted){
+    var status = await Permission.contacts.status; // 연락처 권한 확인 상태 변수
+    /*
+    async, await => Dart 언에서의 특징. 오래소요되는 줄은 제껴두고 다음 줄을 실행 하려고 하기 때문에 반드시 필요.
+    await 사용할 수 있는 코드들이 있음. 막 붙이는 것 절대 아니다.!! (Future에 부착 가능, 자바스크립트에서 Promise)
+     */
+
+    if (status.isGranted){  // 연락처 접근 권한 허가
       print("허락됨");
-    } else if (status.isDenied) {
+    } else if (status.isDenied) {   // 연락처 접근 권한 거부
       print("거절됨");
+      Permission.contacts.request();  //  연락처 허가 팝업 띄우는 요청 코드
     }
+  }
+
+  // Custom 위젯 내에서 initState 자동완성 (해당 위젯 로드될 때 단 한번 실행되는 코드)
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    getPermission();
   }
 
 
@@ -160,7 +174,7 @@ class _MyAppState extends State<MyApp> {
             itemCount: name.length,
             itemBuilder: (c,i){
                 return ListTile(
-                  leading: Image.asset('Capture001.png'),
+                  leading: Image(image: AssetImage('assets/Capture001.png'), fit: BoxFit.fitWidth,),
                   title: Text(name[i]),
             );
           }),
