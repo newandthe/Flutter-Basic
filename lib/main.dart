@@ -13,6 +13,16 @@ import 'package:permission_handler/permission_handler.dart';
  */
 
 
+import 'package:contacts_service/contacts_service.dart';
+/*
+  주의사항) 패키지 새로 설치하면 중지하고 재시작
+
+  실제로 연락처는 어떻게 꺼내오는가 ?
+  1. pubspec.yaml 파일 내에서 contacts_service: ^0.6.3 의존성 추가 후 PubGet (패키지 설치)
+
+*/
+
+
 
 
 void main() {
@@ -125,17 +135,43 @@ class _MyAppState extends State<MyApp> {
     /*
     async, await => Dart 언에서의 특징. 오래소요되는 줄은 제껴두고 다음 줄을 실행 하려고 하기 때문에 반드시 필요.
     await 사용할 수 있는 코드들이 있음. 막 붙이는 것 절대 아니다.!! (Future에 부착 가능, 자바스크립트에서 Promise)
+
+    추가적으로, async 붙어있는 함수 내에서 await을 사용가능하다.
      */
 
     if (status.isGranted){  // 연락처 접근 권한 허가
-      print("허락됨");
+      print("접근권한 허가상태");
+
+      var contacts = await ContactsService.getContacts(); // 모든 연락처 가져오는 방법. 마찬가지로 await 지원
+
+      setState(() {
+        name = contacts; // !! 매우 중요. !! Dart는 타입을 잘 지켜야하는 언어. 초기 변수 선언시 해당된 타입으로만 다른 타입으로 변경 불가능.
+      });
+      // print(contacts);  // 연락처 출력상태 [Instance of 'Contact', Instance of 'Contact']
+      // print(contacts[0].displayName); // 이와 같은 형태로 사용 가능.
+
+      // var newPerson = new Contact();// 연락처를 강제로 추가하는 방법) new 생략 가능. class 에서 인스턴스 뽑는 문법 생략 가능!
+      // newPerson.givenName = '민수'; // 이와 같은 형태로 정보 설정하여서
+      // newPerson.familyName = '김';
+      // await ContactsService.addContact(newPerson); // 마찬가지로 await 지원
+
+
+      
+      
+      
     } else if (status.isDenied) {   // 연락처 접근 권한 거부
       print("거절됨");
       Permission.contacts.request();  //  연락처 허가 팝업 띄우는 요청 코드
+      openAppSettings();  // 앱 설정화면 켜줌 (거절당하면 유저가 앱 설정 들어가서 직접 권한 켜주어야함. 다시는 허가요청 안띄워져서 !!)
+      // !! 따라서 권한 요구보다는 필요할때 설정들어가서 요청하도록
     }
-  }
+  } // getPermission()
 
-  // Custom 위젯 내에서 initState 자동완성 (해당 위젯 로드될 때 단 한번 실행되는 코드)
+
+
+  // Custom 위젯 내에서 initState 자동완성
+  // (해당 위젯 로드될 때 단 한번 실행되는 코드)
+  // 정책 주의 사항) Android 11 이상, iOS 환경에선 거절 2번 이상하면 다시는 팝업 안뜸.
   @override
   void initState() {
     // TODO: implement initState
@@ -144,7 +180,8 @@ class _MyAppState extends State<MyApp> {
   }
 
 
-  var name = ['김영숙', '홍길동', '피자집'];
+  var name = [];  // 빈 리스트는 dynamic 타입으로 모든 타입이 가능함을 뜻한다.
+  // 혹은, List<Contact> name = []; 와 같이 강제지정도 가능하다.
   var total = 3;
   
   addName(value){
@@ -169,13 +206,72 @@ class _MyAppState extends State<MyApp> {
     // 이는 부모 중에 MaterialApp이 포함되어야 context를 입력해야 잘 동작한다.!! -> 따라서 main함수쪽으로 MaterialApp을 바깥으로 뺀 것.
     // 혹은 Builder로 Wrap하면 context 족보 생성..! -> Scaffold, MaterialApp 이런거 들어있다..! builder: (jokbo1) 이후 context: jokbo1 와 같이 사용.
     return Scaffold(
-          appBar: AppBar( title: Text(total.toString())),
+          appBar: AppBar( title: Text(total.toString()), actions: [
+            IconButton(onPressed: (){getPermission();}, icon: Icon(Icons.contacts))
+          ],),
           body: ListView.builder(
             itemCount: name.length,
             itemBuilder: (c,i){
                 return ListTile(
                   leading: Image(image: AssetImage('assets/Capture001.png'), fit: BoxFit.fitWidth,),
-                  title: Text(name[i]),
+                  // title: Text(name[i].givenName), // 만약 이런식으로 작성하면 nullPointerException
+                  title: Text(name[i].givenName ?? '이름이 없는 사람'),  // null이면 오른쪽 변수로 default
+                  /*
+                  NullPointerException 체크
+                  1. 타입지정 잘 했는가 (강제 타입지정)
+                  2. Null 체크 하였는가
+                  ex) String? -> String이지만 null일 수도 있다. 아직 모른다는 의미.
+                  => 삼항연산자 혹은 ?? 사용해야함.
+
+                  APK파일로 발행하는법. Project Structure에서 SDK 선택 후 Build - Flutter - APK 선택하면 경로 떨어지고 APK 할당 됨.
+                  만약 Play Store에 업로드 가능한 파일은 App Bundle로 .aab 파일 확장자로 발행해야함. 추가적으로 선행되는 요구사항은 keyfile로 사인해야함.
+
+                  !!!!!주의사항!!!!!) 키파일 저장하는 폴더안의 내용물이 "모두 삭제"되니 반드시 새로운 폴더 만들어서 거기에 저장할 것 !!!!!!!!!!!
+
+                  keyfile 발급 방법)
+                  1. flutter doctor -v 명령어를 통한 Android toolchain 파트 부분에 Java Binary 설치 경로가 출력됨. bin 경로까지 복사 한 뒤,
+                  2. D:\복사된 경로\upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+                  ex) D:\flutter_android\jbr\bin\keytool -genkey -v -keystore D:\Project_Example\FlutterExample\upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+                  3. android 폴더 하위에 key.properties 파일 생성
+                  파일 내용)
+                  storePassword=아까입력한비번1
+                  keyPassword=아까입력한비번2
+                  keyAlias=upload
+                  storeFile=키파일경로/upload-keystore.jks
+                  4. android.app.build.gradle 파일 내에 아래의 코드를 android { 해당 부분 바로 전에 붙여넣기.
+                    def keystoreProperties = new Properties()
+                    def keystorePropertiesFile = rootProject.file('key.properties')
+                    if (keystorePropertiesFile.exists()) {
+                        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+                    }
+
+                  5. 마찬가지로 gradle 파일에 andorid{} 내부의 buildTypes{} 이전에 붙여넣기
+                    signingConfigs {
+                        release {
+                            keyAlias keystoreProperties['keyAlias']
+                            keyPassword keystoreProperties['keyPassword']
+                            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+                            storePassword keystoreProperties['storePassword']
+                        }
+                    }
+
+                  6. buildTypes {} 내부의 코드를 해당과 같이 변경.
+                    buildTypes {
+                        release {
+                            signingConfig signingConfigs.release
+                        }
+                    }
+
+                  7. 이후 Android Studio 상단 메뉴에서 Build - Flutter - Build App Bundle 을 통한 abb 파일 생성되고, 이것을 구글 플레이스토어에 등록하면 끝.
+
+                  주의사항2) 플레이스토어에 올릴 시 개발자 계정이 필요하며 25달러의 요금이 요구. 비공개로 올려 앱 테스트 가능.
+
+
+
+                   */
+
+
+
             );
           }),
           floatingActionButton: FloatingActionButton(
